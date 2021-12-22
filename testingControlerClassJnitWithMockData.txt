@@ -1,0 +1,93 @@
+Testing controller class
+
+  @MockBean
+    private UserRepo userRepoMock;
+    @Autowired
+    private MockMvc mockMvc;
+	
+	
+	//full integration test
+		1)call api get the output
+		2)call data fom db as
+		2)compare both
+		for test
+		
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.example.springboottraining.model.User;
+import com.example.springboottraining.repo.UserRepo;
+
+import java.util.List;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class SpringBootTrainingApplicationTests {
+	@LocalServerPort
+	   private int port;
+	   @Autowired
+	   private TestRestTemplate restTemplate;
+	   @Autowired
+	   private UserRepo userRepo;
+	   @Test
+	   void getAllUsers_success() {
+	      /*userRepo.deleteAll();
+	      User user = new User();
+	      User newUser = userRepo.save(user);*/
+	      String url = "http://localhost:" + port + "/users/";
+	      ResponseEntity<List<User>> response = restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<User>>() {
+	      });
+//	    restTemplate.getForObject("", List.class);
+	      //assertions
+	      MatcherAssert.assertThat(response.getStatusCode(), CoreMatchers.equalTo(HttpStatus.OK));
+	      List<User> userListActual = response.getBody();
+	      assertNotNull(userListActual);
+	      List<User> expectedUsersList = userRepo.findAll();
+	      assertNotNull(expectedUsersList);
+	      Assertions.assertEquals(expectedUsersList.size(), userListActual.size());
+	   }
+
+	   @Test
+	   void saveUser_success() {
+//	    userRepo.deleteAll();
+	      User user = new User();
+	      user.setName("Test User");
+	      user.setNickName("test");
+	      user.setAge(19);
+//	    User newUser = userRepo.save(user);
+	      HttpEntity<User> userHttpEntity = new HttpEntity<>(user);
+	      String url = "http://localhost:" + port + "/users";
+	      ResponseEntity<User> response = restTemplate.exchange(url, HttpMethod.POST, userHttpEntity,
+	            new ParameterizedTypeReference<User>() {
+	            });
+//	    restTemplate.getForObject("", List.class);
+	      //assertions
+	      MatcherAssert.assertThat(response.getStatusCode(), CoreMatchers.equalTo(HttpStatus.CREATED));
+	      User actualUser = response.getBody();
+	      assertNotNull(actualUser);
+	      User expectedUser = userRepo.findByName("Test User");
+	      assertNotNull(expectedUser);
+	      Assertions.assertEquals(expectedUser.getNickName(), actualUser.getNickName());
+	      Assertions.assertEquals(expectedUser.getAge(), actualUser.getAge());
+	      Assertions.assertEquals(expectedUser.getId(), actualUser.getId());
+	   }
+
+
+
+	   @Test
+	   void contextLoads() {
+	   }
+
+}

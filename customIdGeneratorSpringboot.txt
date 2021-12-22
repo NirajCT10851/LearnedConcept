@@ -1,0 +1,35 @@
+
+
+
+---cutom id generator //date 22-12-2021 before lunch
+
+--model
+import org.hibernate.HibernateException;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.id.enhanced.SequenceStyleGenerator;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+public class LocalDatTimeIdGenerator extends SequenceStyleGenerator {
+    private static AtomicInteger ai;
+    @Override
+    public Serializable generate(SharedSessionContractImplementor session, Object object) throws HibernateException {
+        UUID uuid = UUID.randomUUID();
+        System.out.println("uuid: " + uuid);
+        String s = "abc " + uuid;
+        return s;
+    }
+}
+
+--repo
+
+package com.example.springboottraining.repo;
+
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.springboottraining.model.LocalDatTimeIdGenerator;
+import com.example.springboottraining.model.StudentWithCustomIdGenerator;
+public interface StudentCustomIdRepo extends JpaRepository<StudentWithCustomIdGenerator, LocalDatTimeIdGenerator> {
+}
