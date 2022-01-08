@@ -1,0 +1,79 @@
+
+create table appointment(
+appointmentId serial primary key ,
+title varchar(100) not null,
+startTime timestamp check (startTime >= CURRENT_DATE) not null,
+endTime timestamp check (startTime >= CURRENT_DATE) not null,
+description varchar(255),	
+createdById bigint not null,
+createdDate timestamp not null default CURRENT_timestamp,
+physicianId bigint not null,
+patientId bigint not null,
+editedStatus char check (editedStatus in ('Y','N')) default 'N',	
+updatedById bigint,
+updatedDate timestamp
+)
+
+
+
+
+
+
+
+
+create table appointment_history(
+appointmentId bigint,
+title varchar(100) not null,
+startTime timestamp ,
+endTime timestamp ,
+description varchar(255),	
+createdById bigint not null,
+createdDate timestamp not null,
+physicianId bigint not null,
+patientId bigint not null,
+editedStatus char,	
+updatedById bigint,
+updatedDate timestamp
+)
+
+
+--STEP 1: Create Trigger Function
+
+	
+	CREATE OR REPLACE FUNCTION appointmentClonefunction()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+
+
+ INSERT INTO appointment_history
+              (appointment_id,subject  starttime, endtime, description,
+			  createdby_id, createddate, physician_id, patient_id, editedstatus,
+			  updatedby_id, updateddate)
+              VALUES (
+						NEW.appointment_id,New.subject,New.starttime,New.endtime,New.description,
+						New.createdby_id,New.createddate,New.physician_id,New.patient_id,New.editedstatus,
+						New.updatedby_id,New.updateddate
+					);
+
+
+RETURN NEW;
+END;
+$$
+
+
+
+--STEP 2: Create Trigger
+CREATE OR REPLACE TRIGGER appointmentHistory
+AFTER update
+ON appointment
+for each row
+EXECUTE PROCEDURE appointmentClonefunction();
+
+--STEP 3 :: Test the execution of trigger
+SELECT * FROM appointment;
+update appointment set editedStatus='N' where appointmentId=3; 
+--After Update Check History
+SELECT * FROM appointment_history;

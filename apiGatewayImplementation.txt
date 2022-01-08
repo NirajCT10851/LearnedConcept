@@ -1,0 +1,154 @@
+
+
+--api gateway implemetation
+
+<dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-sleuth</artifactId>
+        </dependency>
+		
+		
+--create application.properties file
+		
+		# http://localhost:8080/actuator/gateway/routes
+server:
+  port: 8080
+
+eureka:
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+spring:
+  application:
+    name: apigateway
+  cloud:
+    # A client sends a request to Spring Cloud Gateway. If the request matches a route through its predicates, the Gateway HandlerMapping will send the request to the Gateway WebHandler, which in turn will run the request through a chain of filters.
+    gateway:
+      # For automatic route discovery through Eureka
+      discovery.locator:
+        enabled: false
+        lowerCaseServiceId: true
+      # Route. It’s identified by a unique ID, a collection of predicates deciding whether to follow the route, a URI for forwarding the request if the predicates allow, and a collection of filters applied either before or after forwarding the request downstream.
+      routes:
+        - id: usermsmodule
+          uri: lb://USERMS
+          predicates:
+            - Path=/dummy456/**
+          filters:
+            - RewritePath=/dummy456/(?<path>.*), /$\{path}
+        - id: ordermsmodule
+          uri: lb://ORDERMS
+          predicates:
+            - Path=/dummy-orderms/**
+          filters:
+            - RewritePath=/dummy-orderms/(?<path>.*), /$\{path}
+        - id: staticurl
+          uri: http://localhost:8081
+          predicates:
+            - Path=/static-url/**
+          filters:
+            - RewritePath=/static-url/(?<path>.*), /$\{path}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+logging:
+  level:
+    com.netflix: WARN
+    org.springframework.web: DEBUG
+    com.edu: DEBUG
+	
+	checking
+	
+	http://localhost:8080/actuator/gateway/routes
+http://localhost:8080/dummy-orderms/orders
+http://localhost:8080/dummy-orderms/orders
+http://localhost:8080/dummy456/users
+http://localhost:8080/static-url/users
+
+
+after lunch
+---prefilter
+
+in api gatewayadd prefilter and post filter 
+
+package com.edu.apigateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+import java.time.Instant;
+@Order(1)
+@Component
+public class MyPreFilter implements GlobalFilter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MyPreFilter.class);
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        LOGGER.info("**** Inside Pre-Filter ****");
+        HttpHeaders headers = exchange.getRequest().getHeaders();
+        Instant now = Instant.now();
+        ServerWebExchange webExchange = exchange.mutate().request(
+                exchange.getRequest().mutate().header("startTime", now.toString()).build()
+        ).build();
+        return chain.filter(webExchange);
+    }
+}
+
+
+.....
+
+post filter
+
+package com.edu.apigateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+@Configuration
+public class MyPostFilterConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MyPostFilterConfig.class);
+    @Bean
+    public GlobalFilter postGlobalFilter() {
+
+        return ((exchange, chain) -> chain.filter(exchange).then(Mono.fromRunnable(() -> {
+            HttpHeaders headers = exchange.getRequest().getHeaders();
+            List<String> startTime = headers.get("startTime");
+            String s = startTime.stream().findFirst().get();
+            Instant startTimeIntant = Instant.parse(s);
+            long durationOfRequest = ChronoUnit.MILLIS.between(startTimeIntant, Instant.now());
+            LOGGER.info("$$$$ Inside Post-Filter $$$$");
+            LOGGER.debug("Total time taken in milliseconds: {}", durationOfRequest);
+        })));
+    }
+}
+

@@ -1,0 +1,49 @@
+
+
+day 3 28/12/2019 circuit breaker
+
+for tracing with traceid we have to add below flag
+@HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000"),
+@HystrixProperty(name = "execution.isolation.strategy", value = "SEMAPHORE")
+
+
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+            <version>2.2.8.RELEASE</version>
+        </dependency>
+----
+@EnableHystrix // add it in the Main class
+----
+@HystrixCommand(fallbackMethod = "getOrdersFromCache")
+    @GetMapping("/users-orders")
+    public  List<OrderTO> callOrderms() {
+        System.out.println("calling orderms");
+        List<OrderTO> orderTOList = restTemplate.getForObject("http://orderms/orders", List.class);
+        return orderTOList;
+    }
+ 
+    private List<OrderTO> getOrdersFromCache() {
+        // retrieve from cache
+        OrderTO orderTO1 = new OrderTO();
+        orderTO1.setName("iphone-cache");
+        orderTO1.setId(1);
+ 
+        OrderTO orderTO2 = new OrderTO();
+        orderTO2.setName("nexus-cache");
+        orderTO2.setId(2);
+ 
+        return Arrays.asList(orderTO1, orderTO2);
+    }
+	
+	--bulk head
+	
+	@HystrixCommand(fallbackMethod = "getOrdersFromCache", // Circuit Breaker
+commandProperties = {@HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000")},
+        // Bulkhead
+        threadPoolKey = "callOrdermsThreadPool",
+        threadPoolProperties = {
+                @HystrixProperty(name = "coreSize", value = "30"),
+                @HystrixProperty(name = "maxQueueSize", value = "10")
+        }
+)

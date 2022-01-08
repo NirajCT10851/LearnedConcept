@@ -1,0 +1,12 @@
+--spring-data-rest project name (data-rest)//date 22-12-2021 before lunch
+
+Spring-Data-Rest:
+1) New Project with data-rest dependency + JPA + H2:
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-rest</artifactId>
+</dependency>
+2) New Model Class: Employee.java
+3) New Repo Interface: EmpRepo
+4) Add Swagger with dependency in pom.xml
+5) Test from Swagger

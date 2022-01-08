@@ -1,0 +1,446 @@
+--morning 03/01/2022 docker day 1
+
+docker images
+docker ps
+docker ps -a
+docker container ls
+docker container ls -a
+
+
+--file to upload in vm
+
+scp -i "19-Dec-2021_Misbah-New.pem" -r /c/code_base/java_training_15-Dec-2021/userms/target/userms-0.0.1-SNAPSHOT.jar ubuntu@ec2-13-235-247-65.ap-south-1.compute.amazonaws.com:/home/ubuntu
+
+---uploading jar file to cloud
+$ scp -r /c/Users/NirajkumarS/Documents/ms-order.jar adminroot@20.80.32.184:/home/adminroot
+
+
+$ scp -r /c/Users/NirajkumarS/Documents/DockerfileNiraj adminroot@20.80.32.184:/home/adminroot
+
+
+--steps to create docker image:
+1) vim Dockerfile
+FROM openjdk:8-jdk-alpine
+COPY ms-order.jar /app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
+2) docker build -t ms-order:1.0 -f DockerfileNiraj. / docker build -f DockerfileNiraj -t orderms:1.0 .
+3) docker images
+
+--containerization
+docker run -p 8081:8081 5a8b38bbd0e2 
+
+docker run -p 8081:8087 1b0eaa893ca4
+
+20.80.32.184:8081/orders
+
+
+
+
+1) detached mode ("-d")
+docker run -d -p 8083:8082 6ebc2fc994d1   
+docker stop 69bed5194c427c6766702bf99fd1819f168b4c733a9d65fe977be1b19ae55b52
+ 
+2) docker logs <container-id>
+docker logs <container-id> -f
+# Last few lines of logs based on the number provided
+docker logs <container-id> --tail 5
+# timestamp:
+docker logs <container-id> -t
+# case sensitive search
+docker logs <container-id> | grep Inside
+# case insensitive search
+docker logs <container-id> | grep -i inside
+docker logs <container-id> --details
+ 
+3) Name the container "orderms_8083"
+docker run -d --name orderms_8083 -p 8083:8082 6ebc2fc994d1
+4) docker stop <container-id>
+   docker stop -f <container-id>
+   
+   
+day 2
+--push and pull of images from local machine to dockerhub account
+
+docker rm <container-id>
+docker rmi <image-id>
+or try with existing one
+docker tag orderms:1.0 dockeridniraj/orderms:orderms-1.0
+ 
+# prompts for username and password
+docker login
+docker push misbaharchitect/firstrepo:orderms-1.5
+docker rmi <image-id>
+docker images
+docker pull misbaharchitect/firstrepo:orderms-1.5   
+
+-----------------
+
+docker tag orderms:1.0 misbaharchitect/firstrepo:orderms-3.3
+docker login
+docker push misbaharchitect/firstrepo:orderms-3.3
+
+docker pull misbaharchitect/firstrepo:orderms-3.3
+
+
+-----------
+docker build -f DockerfileNiraj -t orderms:1.0 .//created build file
+docker tag orderms:1.0 dockeridniraj/orderms:orderms-1.0//giving tag name required for docker matches
+docker push dockeridniraj/orderms:orderms-1.0//pushing the image to docker hub
+docker rmi <image-id>
+docker pull  dockeridniraj/orderms:orderms-1.0 //when lost , can pull from docker hub
+
+
+-------------
+--running docker container
+docker exec -it <container id> /bin/bash ->>  docker exec -it 84de049fa3b7 /bin/bash  or docker exec -it 8bcfe9799123  sh
+
+ls
+ps -ef
+apt-get update
+apt-get install -y procps
+ps -ef
+kill 1
+
+--delete all unused exited
+
+task
+matching profile of spring boot and docker
+java -jar -Dspring.profiles.active=prod  orderms-0.0.1-SNAPSHOT.jar
+
+Docker Environment Variables:
+1) orderms to have profile specific values (/profile): application.properties, application-dev.properties and application-prod.properties
+ 
+    @Value("${profile}")
+    private String profile;
+ 
+    @GetMapping("/profile")
+    public String getProfile() {
+        return profile;
+    }
+ 
+2) build jar and copy to ubuntu machine
+3) Dockerfile include: ENV SPRING_PROFILES_ACTIVE=dev
+FROM openjdk:11-jdk-slim
+WORKDIR /ordermsdir
+ENV SPRING_PROFILES_ACTIVE=dev
+COPY orderms-0.0.1-SNAPSHOT-profile.jar /app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]
+ 
+4) Run without profile:
+docker run -p 8081:8081 <container-id>
+5) Test /profile api to show "dev"
+6) Run with profile:
+docker run -e SPRING_PROFILES_ACTIVE=prod -p 8082:8082 <container-id>
+7) Test /profile api to show "prod"
+
+--way of setting environment variable
+
+ENV SPRING_PROFILES_ACTIVE=dev
+ENV MYFILE="my File.txt"
+ENV MYFILE=my\ File.txt
+ENV DIR=/config LEVEL=info
+ENV DB mysql
+ENV DB=sql
+#in run command: --env-file env.dev
+ 
+$MYFILE
+
+---
+spring boot whole project migrate to vm and run in docker make docker image out of it
+apt-get install openjdk-8-jdk
+1) copy orderms code to ubuntu machine
+2) install jdk: apt-get install openjdk-8-jdk
+3) ./mvnw spring-boot:build-image
+4) docker images
+Note: all related file must have executable permisiion
+chmod 777 filename
+
+day 3 docker
+23.101.175.125
+
+multi stage buil with war filetask 1
+1) Download Tomcat Zip file: https://tomcat.apache.org/download-80.cgi
+2) Extract it
+3) start.spring.io -> new project: packaging: "war" + dependency 'web'
+4) Add a new API /hello
+5) Build the war: mvn clean install -Dmaven.test.skip
+6) copy the war from target directory to Tomcat->webapps
+7) Start Tomcat: bin\startup.bat
+
+
+task 2
+
+1) Dockerfile:
+FROM maven:3.8.4-openjdk-8 as build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
+COPY src src
+RUN mvn package -Dmaven.test.skip
+ 
+FROM tomcat:jre8-openjdk-slim-buster
+COPY --from=build /app/target/multistageapp.war ${CATALINA_HOME}/webapps/multistageapp.war
+EXPOSE 8081
+ENTRYPOINT ["catalina.sh", "run"]
+ 
+2) Build Image:
+docker build -t multistage:1.0 -f DockerfileTomcat  .
+ 
+3) Run Image:
+docker run -d -p 8081:8081 04e242308b6f 
+ 
+4) Test:
+curl localhost:8081/docker-multistagebuild-0.0.1-SNAPSHOT/hello
+
+
+
+--docker volumes
+--we can edit file created in continer from out of the container as well with with volume creation
+docker volume ls
+docker volume create myvol
+docker volume rm myvol
+docker run -dit --name contwithvolniraj --mount source=myvol,target=/vol alpine:latest
+docker exec -it contwithvolniraj sh
+ls vol
+echo "some data" > niraj.txt
+cat /vol/niraj.txt
+exit
+ls -l /var/lib/docker/volumes/Nirajvol/_data/
+cat /var/lib/docker/volumes/Nirajvol/_data/niraj.txt
+echo "Niraj's another data" >> /var/lib/docker/volumes/Nirajvol/_data/niraj.txt
+docker exec -it contwithvol sh
+cat /vol/niraj.txt
+
+---need to perform practice after lunch
+
+Create volume and make changes in host machine and container both::
+2)
+Volume:
+docker run -d --name devtest --mount source=myvol2,target=/app nginx:latest
+ls /var/lib/docker/volumes/myvol2/_data/
+vim hostfile.txt
+docker exec -it devtest sh
+# make changes to the file hostfile.txt inside container
+echo "This a text inside container for volume" > /app/hostfile.txt
+# see changes to the file hostfile.txt on host machine
+cat /var/lib/docker/volumes/myvol2/_data/hostfile.txt
+ 
+3)
+# Bind Mount:
+docker run -dit --name devtestbindmount --mount type=bind,source="$(pwd)"/bindmount,target=/app nginx:latest
+docker exec -it devtestbindmount sh
+# make changes to the file bind.txt inside container
+echo "This a text inside container for bindmount" > /app/bind.txt
+# see changes to the file bind.txt on host machine
+vim bindmount/bind.txt
+docker ps
+docker exec -it devtestbindmount sh
+cat /app/bind.txt
+
+
+day 4
+
+docker compose
+Docker-Compose:
+1) download code(docker-db-demo) from github:
+https://github.com/misbaharchitect/microservice/tree/main/citustech/docker-db-demo
+ 
+2) install docker-compose:
+   apt-get install docker-compose
+23.96.179.148
+docker-compose config -q
+docker-compose build
+docker images
+docker-compose up -d //run all cointainers
+chnage .yml file path of db from misbah db to cointainer db
+docker-compose down //stop all cointainer
+docker ps //make sure no cointainer is there
+docker-compose config -q// to check whether .yml is fine
+
+docker-compose up -d//starting in deytached state
+
+docker-compose logs//check whether working fine
+table was there so we used all command that is there in curl.txt file from git hub
+
+curl localhost:8080/users -v //get
+
+curl -X POST localhost:8080/users -H "Content-Type: application/json" -d "{\"name\":\"abc\"}" -v
+
+Docker-Compose:
+1) download code(docker-db-demo) from github:
+https://github.com/misbaharchitect/microservice/tree/main/citustech/docker-db-demo
+ 
+2) install docker-compose:
+   apt-get install docker-compose
+ 
+3) Copy to ubuntu machine, following files:
+   docker-compose.yml, docker-db-demo-0.0.1-SNAPSHOT.jar, wait-for-it.sh, wait.Dockerfile
+ 
+docker-compose config -q
+docker-compose build
+docker images
+docker-compose up -d
+docker ps
+curl localhost:8080/users
+ 
+4) update docker-compose.yml to use postgres docker container
+docker-compose down
+docker ps -a
+docker-compose config -q
+ 
+Useful docker-compose commands:
+run these commands from directory where docker-compose.yml file is present:
+docker-compose config
+docker-compose config -q
+docker-compose build
+docker-compose up
+docker-compose down
+docker-compose start
+docker-compose stop
+docker-compose ps
+
+
+
+note
+run these commands from directory where docker-compose.yml file is present:
+docker-compose config
+docker-compose config -q
+docker-compose build
+docker-compose up
+docker-compose down
+docker-compose start
+docker-compose stop
+docker-compose ps
+docker-compose logs
+docker-compose logs -f//follow latest chnges 
+docker-compose logs --tail 10 //latest 10 lines
+docker-compose logs -t
+docker-compose logs | grep postgres
+docker-compose logs | grep -i postgres//ignore cases
+
+--types of docker network
+Docker-Network:
+
+docker network ls
+!)docker container run -dit --name  inboxroot_web-db-compose  --network host nginx
+curl localhost -v
+
+2)bridge network
+
+docker run -dit --name ctrl1 alpine ash //network with ctrl1 name  -->172.17.0.3
+docker run -dit --name ctrl2 alpine ash//network with ctrl2 name   -->172.17.0.9
+docker ps
+docker inspect 2f285c9b92a4
+docker network inspect bridge
+o/p
+  "Containers": {
+            "0bdf9afc95492f81f88ed836727fc914e3795fdd20ca77d2208e92ce5cbe27c5": {
+                "Name": "ctrl2",
+                "EndpointID": "af47fd0dc4b088afe7ea831e7230d70d7c301c7d48d65a165fa62f93f2081daf",
+                "MacAddress": "02:42:ac:11:00:09",
+                "IPv4Address": "172.17.0.9/16",
+                "IPv6Address": ""
+            },
+            "b6623ee3e1d401a9709cc812147642d1b016690597010d134b2aa07532cb9dab": {
+                "Name": "ctr1",
+                "EndpointID": "178a1b82a8b4cac31d1954e045c5d293362d4b4c82dff6f3a5328eec4aa4c2bc",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+        
+
+
+
+
+docker exec -it ctrl1 sh //logging to ctrll network
+ping ip-of-ctr2/172.17.0.9 //able to ping ctrl2 with ip only no nat availabe with default
+ping ctrl2 // o/p-->ping: bad address 'ctrl2'
+ 
+  //creating own bridge n/w will get nat support , can able ping by name of cointer as well
+docker network create -d bridge gold-nwk //creating own bridge n/w
+docker container run -dit --name ctr3 --network gold-nwk alpine sh -->>172.26.0.2
+docker container run -dit --name ctr4 --network gold-nwk alpine sh -->172.26.0.3
+ 
+docker network inspect gold-nwk
+o/p
+ "Containers": {
+            "75b4c4aa4b16bef219d8cfdb9cd5f58385197b4c5ac71b4da61bd01688670238": {
+                "Name": "ctr3",
+                "EndpointID": "568e7d55b7be7052fcc3049a00a15610bbe3ad4e944968fec2b59cd5ade79eee",
+                "MacAddress": "02:42:ac:1a:00:02",
+                "IPv4Address": "172.26.0.2/16",
+                "IPv6Address": ""
+            },
+            "ff431892227198163a1b4a050a81340753fb3cf88f12c86f68380690e4d04850": {
+                "Name": "ctr4",
+                "EndpointID": "0f251ff6f7f0ad6d782e53d3f2bbf841b1c642e69fdaa035fd86210ff0920de3",
+                "MacAddress": "02:42:ac:1a:00:03",
+                "IPv4Address": "172.26.0.3/16",
+                "IPv6Address": ""
+            }
+        },
+
+
+
+docker exec -it ctr3 sh
+ping ip-of-ctr4/172.26.0.3
+ping ctr4
+
+--none network 
+
+
+docker run --rm -dit --network none  --name no-net-alpine-nw alpine:latest ash
+  
+docker inspect container-id(1a07b2350019842f81b4b007380cf4871482c87a6e056b7a53aea8ec2dda3e6b) 
+docker network inspect none  -->> will give all none network in machine
+o/p
+ "Containers": {
+            "1a07b2350019842f81b4b007380cf4871482c87a6e056b7a53aea8ec2dda3e6b": {
+                "Name": "no-net-alpine-nw",
+                "EndpointID": "c3f51afdbe9e00fca4452123e7bc8e42b7226adc47c498087841dbbcf7aa9510",
+                "MacAddress": "",
+                "IPv4Address": "",
+                "IPv6Address": ""
+            },
+            "3ab3aeda7679a4716389938263e4f28911286f046969a4f5a53b17e02d3a5aa8": {
+                "Name": "no-net-alpine",
+                "EndpointID": "eea04a2d40650e85fb716dcc4a4c756506173a4301762b7b62465e402021931e",
+                "MacAddress": "",
+                "IPv4Address": "",
+                "IPv6Address": ""
+            }
+        },
+
+
+overlay:
+Overlay:
+TCP: 2377, 7946
+UDP: 7946, 4789
+Manager-Machine:
+docker swarm init
+ 
+docker run -it --name swarm-master --network my-overlay-net alpine sh
+Worker Node:
+docker swarm join --token SWMTKN-1-4psqemuxn25mcqhw9ijwcuzdmmfmmins0l966tfujowsre8ab8-24f1ks097y5t9wc5e60wyz3tb 172.31.37.1:2377
+docker run -it --name swarm-worker --network my-overlay-net alpine sh
+ping swarm-master
+
+--searches in docker in terminal
+
+Search:
+ 
+docker search nginx
+docker search nginx --filter=stars=20// rank seach lower limit n above
+docker search nginx --filter=is-automated=true
+docker search nginx --filter=is-official=true
+docker search jdk --filter=is-official=true
+docker search --filter is-automated=true --filter stars=3 postgres
+ 
+Formatting:
+ 
+docker search --format "{{.Name}}" nginx
+docker search --format "{{.Name}} ---- {{.IsOfficial}}" nginx 
+docker search --format "{{.Name}} ---- {{.IsAutomated}}" nginx
+docker search --format "{{.Name}} ---- {{.StarCount}}" nginx
+docker search --format "name={{.Name}} ---- star={{.StarCount}}" nginx

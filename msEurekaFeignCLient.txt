@@ -1,0 +1,179 @@
+day1 microserices
+userms
+orderms
+
+interartion between two microservices
+
+<dependency>
+   <groupId>io.springfox</groupId>
+   <artifactId>springfox-boot-starter</artifactId>
+   <version>3.0.0</version>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-devtools</artifactId>
+    <version>2.5.6</version>
+</dependency>
+
+
+
+
+day2-->>27/12/2021 before lunch
+
+--eureka-server
+	<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+	</dependency>
+
+1)application properties
+server.port=8761
+spring.application.name=eureka-server
+ 
+#Standalone
+eureka.client.register-with-eureka=false
+eureka.client.fetch-registry=false
+
+2)
+use @EnableEurekaServer in main file
+
+3)
+http://localhost:8761/eureka/
+
+client will be orderms and userms
+
+userms + orderms:
+<spring-cloud.version>2020.0.5</spring-cloud.version>
+ 
+<dependency>
+  <groupId>org.springframework.cloud</groupId>
+  <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+ 
+<dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  
+  --output in console related to registering
+   : Registering application EUREKA-SERVER with eureka with status UP
+	 Setting the eureka configuration..
+	 : isAws returned false: isAws returned false
+	 Got 1 instances from neighboring DS node
+	 Renew threshold is: 1
+	 Changing status to UP
+	 Tomcat started on port(s): 8761 (http) with context path '
+	 Started Eureka Server
+	  Started EurekaServerApplication in 10.474 seconds (JVM running for 12.48)
+	   Registered instance UNKNOWN/CM1VA144.mumbai1.corp.citiustech.com:8081 with status UP (replication=false)
+	   Registered instance UNKNOWN/CM1VA144.mumbai1.corp.citiustech.com:8081 with status UP (replication=true)
+	   
+//for giving name to eureka server	   
+spring.application.name=userms
+
+//approch 1 other than traditional
+@Bean
+@LoadBalanced//used from where need to call other ms
+public RestTemplate restTemplate() {
+   return new RestTemplate();
+}
+
+//Acces can be based on application name not with url maunally
+restTemplate.getForObject("http://orderms/orders", List.class);
+
+//approch 2 other than traditional
+
+openfeign
+
+
+FeignClient:
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+
+@EnableFeignClients
+
+package com.edu.userms;
+import com.edu.userms.model.OrderTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import java.util.List;
+@FeignClient("orderms") // Eureka-Discovered Name
+public interface OrdermsFeignClient {
+    @RequestMapping(
+            value = "/orders",
+            method= RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public List<OrderTO> getAllOrders();
+    @RequestMapping(
+            value = "/orders",
+            method= RequestMethod.POST,
+            produces = MediaType.APPLICATION_JSON_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public OrderTO saveOrders(@RequestBody OrderTO orderTO);
+    @RequestMapping(
+            value = "/orders/{id}",
+            method= RequestMethod.DELETE
+    )
+    public OrderTO deleteOrders(@PathVariable Long id);
+}
+
+
+
+
+
+.........................................................
+import com.edu.userms.OrdermsFeignClient;
+import com.edu.userms.model.OrderTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+@RestController
+@RequestMapping("/")
+public class UserResourceFeignClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserResourceFeignClient.class);
+    private final OrdermsFeignClient feignClient;
+//    @Autowired //Not-Mandatory
+    public UserResourceFeignClient(OrdermsFeignClient feignClient) {
+        this.feignClient = feignClient;
+    }
+
+    @GetMapping("/feign-orders")
+    public  List<OrderTO> callOrderms() {
+        System.out.println("calling orderms");
+        List<OrderTO> orderTOList = feignClient.getAllOrders();
+        return orderTOList;
+    }
+
+    @PostMapping("/feign-orders")
+    public  OrderTO saveOrderInOrderms(@RequestParam String orderName) {
+        OrderTO orderTO = new OrderTO();
+        orderTO.setName(orderName);
+        OrderTO newOrder = feignClient.saveOrders(orderTO);
+        return newOrder;
+    }
+
+    @DeleteMapping("/feign-orders/{id}")
+    public void deleteOrder(@PathVariable Long id) {
+        System.out.println("DELETE API called");
+        feignClient.deleteOrders(id);
+    }
+
+}
+
