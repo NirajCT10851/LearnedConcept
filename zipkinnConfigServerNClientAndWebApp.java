@@ -284,6 +284,43 @@ Client secrets
 
 (sso project created in training workSpace2)
 1) new spring boot : web, spring-security, oauth2-client
+
+
+	
+	
+	@Bean
+
+public WebClient.Builder webClientBuilder() {
+   return WebClient.builder();
+}
+	
+	public static void main(String[] args) {
+		SpringApplication.run(SsoApplication.class, args);
+	}
+	
+
+	   @Override
+	   protected void configure(HttpSecurity http) throws Exception {
+//	    http.httpBasic();
+	      http.oauth2Login();
+	      http.authorizeRequests().anyRequest().authenticated();
+	   }
+
+	   @Bean
+	   public ClientRegistrationRepository clientRegistrationRepository() {
+	      ClientRegistration clientRegistration = clientRegistration();
+	      return new InMemoryClientRegistrationRepository(clientRegistration);
+	   }
+
+	   private ClientRegistration clientRegistration() {
+	      return CommonOAuth2Provider.GITHUB
+	            .getBuilder("github")
+	            .clientId("e2a5fff60afa91079043")
+	            .clientSecret("8c92438fd52791a14b5662da76b49ce4c427438c")
+	            .build();
+	   }
+
+
 2) Add Code: clientId + secret
 3) home.html file in resources->static directory
 3) use new browser session
