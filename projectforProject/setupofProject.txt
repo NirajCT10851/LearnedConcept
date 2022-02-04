@@ -1,0 +1,134 @@
+Changes Required as per machine
+:
+
+Adminms- AuthService File related to key cloack credentials
+
+
+	One time->>	String serverUrl = "http://localhost:8180/auth";
+			  String getUserByUsername = "http://localhost:8180/auth/admin/realms/master/users?username=";
+			  String realm = "master";
+			  // idm-client needs to allow "Direct Access Grants: Resource Owner Password Credentials Grant"
+			  String clientId = "apigateway";
+			  String clientSecret = "dBd86f6new0ofACVJhixmTj8DRNCJhmH";
+
+3times->		.username("admin") //
+                .password("abcd1234") //
+
+Patientms-->
+One time->>	String serverUrl = "http://localhost:8180/auth";
+			  String getUserByUsername = "http://localhost:8180/auth/admin/realms/master/users?username=";
+			  String realm = "master";
+			  // idm-client needs to allow "Direct Access Grants: Resource Owner Password Credentials Grant"
+			  String clientId = "apigateway";
+			  String clientSecret = "dBd86f6new0ofACVJhixmTj8DRNCJhmH";
+
+3times->		.username("admin") //
+                .password("abcd1234") //
+
+
+				
+
+APIGATeway:
+		
+		yml file:
+		keycloak clientID and clientname
+		
+          apigateway:
+            provider: keycloak
+            client-id: apigateway
+            client-secret: dBd86f6new0ofACVJhixmTj8DRNCJhmH
+            authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:8085/login/oauth2/code/keycloak
+            scope: openid
+
+
+
+--to run project steps
+1)start angular
+2)starting keycloak
+set JAVA_HOME=C:\Program Files\Java\jdk1.8.0_301
+standalone.bat -Djboss.http.port=8180
+keycloak server setup if not done
+create client in master realeme(consider zip file for keycloal server)
+create admin user which there default in application dBd86f6new0ofACVJhixmTj8DRNCJhmH
+and login create user as per requirement
+
+3) All microservice
+eurekams
+apigateway
+adminms
+patientms
+appointmentms
+inboxms
+
+note : master data required if not there
+consider script file(masterScripts.sql)
+
+starting on chrome
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --user-data-dir="C:/Chrome"
+
+in intial setup we have create a account in keycloak which will map to admin in our database.
+all microservices properties file must be point to some valid database
+
+Trigger Script required for maining appointment update
+
+
+--STEP 1: Create Trigger Function
+CREATE OR REPLACE FUNCTION appointmentClonefunction()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+
+
+ INSERT INTO appointment_history
+              (appointment_Id, subject, starttime, endtime, description,
+			  createdBy_Id, createddate, physician_Id, patient_Id, editedstatus,
+			  updatedBy_Id, updateddate)
+              VALUES (
+						NEW.appointment_Id,NEW.subject,New.starttime,New.endtime,New.description,
+						New.createdBy_Id,New.createddate,New.physician_Id,New.patient_Id,New.editedstatus,
+						New.updatedBy_Id,New.updateddate
+					);
+
+
+RETURN NEW;
+END;
+$$
+
+--STEP 2: Create Trigger
+CREATE OR REPLACE TRIGGER appointmentHistory
+AFTER update
+ON appointment
+for each row
+EXECUTE PROCEDURE appointmentClonefunction();
+
+
+---------------------------------------------------------------------------------------------------------------------------
+RepoLink
+Admin And  Login	https://github.com/CT-Hospital/CT-Admin-Login.git
+InBox,Email service	https://github.com/CT-GHospital/Inbox-ms.git
+Appointment	https://github.com/CT-Hospital/CT-Hospital-Appointment.git
+patient Registration,patientvisit and patient details	https://github.com/AnjiReddySattaru/CTHospitalJavaCode.git
+eureka-server	https://github.com/CT-Hospital/eureka-server.git
+api-gateway	https://github.com/CT-Hospital/ct-apigateway.git
+
+All in one 	https://github.com/CT-Hospital/CT-Final_Repo.git
+
+
+
+
+status_table
+"A"	"Active"
+"B"	"Blocked"
+"I"	"Inactive"
+"U"	"UnApproved"
+
+roles_table
+
+1	"Admin"
+2	"Nurse"
+3	"Doctor"
+	
+	
