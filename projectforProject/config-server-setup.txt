@@ -1,0 +1,53 @@
+--in config cloud microservice
+
+config server
+Dev tools 
+web
+actuators
+
+to make config serve annotate with 
+@EnableConfigServer
+
+
+In Client microservice of config to get runtime url of provider service
+config client
+dev tools
+web
+
+@RefreshScope in main class so that it takes up every changes
+and we need to annotate @Lazy annotation in client microservice to avoid error due to RefreshScope
+
+
+in restcontroller
+@Value("${insurnace.provider.url}")
+	private String url;
+
+	@GetMapping("/getPlan")
+	public List<String> getPlans() {
+		List<String> plans = template.getForObject(url, List.class);
+		return plans;
+	}
+
+application properties
+
+spring.cloud.config.uri=http://localhost:8888 //for chaecking with config server
+server.port=9090
+
+
+In provider service microservice(normal microservice)
+
+@RestController
+@RequestMapping("/insurnace-service")
+public class InsuranceProviderApplication {
+
+	@GetMapping("/getUpdatePlans")
+	public List<String> getPlans() {
+		return Stream.of("Premium", "Gold", "Platinum").collect(Collectors.toList());
+
+	}
+
+
+consul solves problem of(service mesh capability)
+Discovery 
+configuration
+segmentation -- connect (who can talk to talk with the help of service graph) A-->B there is no ip to ip cord coded
