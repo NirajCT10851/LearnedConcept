@@ -3,3 +3,4 @@ rundll32.exe sysdm.cpl,EditEnvironmentVariables
 set JAVA_HOME=C:\Program Files\Java\jdk1.8.0_301
 
 mvnw clean install -Dmaven.test.skip
+mvn spring-boot:run -Dspring-boot.run.profiles=local //running spring boot application with custom profile
